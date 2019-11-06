@@ -48,7 +48,7 @@ class IoT_TransactionHandler(TransactionHandler):
         header = transaction.header
         signer = header.signer_public_key
 
-        print('Receive transaction from client: ' + transaction)
+        #print('Receive transaction from client: ' transaction)
 
         iot_payload = IoT_Payload.from_bytes(transaction.payload)
         iot_state = IoT_State(context)
@@ -62,6 +62,8 @@ class IoT_TransactionHandler(TransactionHandler):
             
             # Store data in sawtooth blockchain
             iot_state.set_data(iot_payload.name, data)
+
+            print('1. Handler create no problem.')
         
         elif iot_payload.action == 'upload':
             

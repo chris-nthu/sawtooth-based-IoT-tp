@@ -23,7 +23,7 @@ class IoT_Payload:
     def __init__(self, payload):
         try:
             # The payload is csv utf-8 encoded string
-            name, action, temperature, humidity = payload.decode.split(",")
+            name, action, temperature, humidity = payload.decode().split(",")
 
         except ValueError:
             raise InvalidTransaction('Invalid payload serialization')
@@ -48,6 +48,22 @@ class IoT_Payload:
         self._action = action
         self._temperature = temperature
         self._humidity = humidity
+
+    @property
+    def name(self):
+        return self._name
+    
+    @property
+    def action(self):
+        return self._action
+    
+    @property
+    def temperature(self):
+        return self._temperature
+    
+    @property
+    def humidity(self):
+        return self._humidity
 
     @staticmethod
     def from_bytes(payload):

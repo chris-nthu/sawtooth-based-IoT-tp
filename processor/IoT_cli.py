@@ -342,7 +342,7 @@ def create_parser(prog_name):
     add_create_parser(subparsers, parent_parser)
     add_list_parser(subparsers, parent_parser)
     add_show_parser(subparsers, parent_parser)
-    add_take_parser(subparsers, parent_parser)
+    add_upload_parser(subparsers, parent_parser)
     add_delete_parser(subparsers, parent_parser)
 
     return parser
@@ -352,63 +352,25 @@ def do_list(args):
     url = _get_url(args)
     auth_user, auth_password = _get_auth_info(args)
 
-    client = XoClient(base_url=url, keyfile=None)
+    client = IoTClient(base_url=url, keyfile=None)
 
-    game_list = [
-        game.split(',')
-        for games in client.list(auth_user=auth_user,
+    data_list = [
+        data.split(',')
+        for dataSet in client.list(auth_user=auth_user,
                                  auth_password=auth_password)
-        for game in games.decode().split('|')
+        for data in dataSet.decode().split('|')
     ]
 
-    if game_list is not None:
-        fmt = "%-15s %-15.15s %-15.15s %-9s %s"
-        print(fmt % ('GAME', 'PLAYER 1', 'PLAYER 2', 'BOARD', 'STATE'))
-        for game_data in game_list:
+    if data_list is not None:
+        fmt = "%-15s %-15s %-15s"
+        print(fmt % ('NAME', 'TEMPERATURE', 'HUMIDITY'))
+        for data in data_list:
 
-            name, board, game_state, player1, player2 = game_data
+            name, temperature, humidity = data
 
-            print(fmt % (name, player1[:6], player2[:6], board, game_state))
+            print(fmt % (name, temperature, humidity))
     else:
-        raise XoException("Could not retrieve game listing.")
-
-
-def do_show(args):
-    name = args.name
-
-    url = _get_url(args)
-    auth_user, auth_password = _get_auth_info(args)
-
-    client = XoClient(base_url=url, keyfile=None)
-
-    data = client.show(name, auth_user=auth_user, auth_password=auth_password)
-
-    if data is not None:
-
-        board_str, game_state, player1, player2 = {
-            name: (board, state, player_1, player_2)
-            for name, board, state, player_1, player_2 in [
-                game.split(',')
-                for game in data.decode().split('|')
-            ]
-        }[name]
-
-        board = list(board_str.replace("-", " "))
-
-        print("GAME:     : {}".format(name))
-        print("PLAYER 1  : {}".format(player1[:6]))
-        print("PLAYER 2  : {}".format(player2[:6]))
-        print("STATE     : {}".format(game_state))
-        print("")
-        print("  {} | {} | {}".format(board[0], board[1], board[2]))
-        print(" ---|---|---")
-        print("  {} | {} | {}".format(board[3], board[4], board[5]))
-        print(" ---|---|---")
-        print("  {} | {} | {}".format(board[6], board[7], board[8]))
-        print("")
-
-    else:
-        raise XoException("Game not found: {}".format(name))
+        raise IoTException("Could not retrieve data.")
 
 
 def do_create(args):
@@ -418,7 +380,7 @@ def do_create(args):
     keyfile = _get_keyfile(args)
     auth_user, auth_password = _get_auth_info(args)
 
-    client = XoClient(base_url=url, keyfile=keyfile)
+    client = IoTClient(base_url=url, keyfile=keyfile)
 
     if args.wait and args.wait > 0:
         response = client.create(
@@ -433,24 +395,26 @@ def do_create(args):
     print("Response: {}".format(response))
 
 
-def do_take(args):
+def do_upload(args):
     name = args.name
-    space = args.space
+    temperature = args.temperature
+    humidity = args.humidity
+    print(args)
 
     url = _get_url(args)
     keyfile = _get_keyfile(args)
     auth_user, auth_password = _get_auth_info(args)
 
-    client = XoClient(base_url=url, keyfile=keyfile)
+    client = IoTClient(base_url=url, keyfile=keyfile)
 
     if args.wait and args.wait > 0:
-        response = client.take(
-            name, space, wait=args.wait,
+        response = client.upload(
+            name, temperature, humidity, wait=args.wait,
             auth_user=auth_user,
             auth_password=auth_password)
     else:
-        response = client.take(
-            name, space,
+        response = client.upload(
+            name, temperature, humidity,
             auth_user=auth_user,
             auth_password=auth_password)
 
@@ -464,7 +428,7 @@ def do_delete(args):
     keyfile = _get_keyfile(args)
     auth_user, auth_password = _get_auth_info(args)
 
-    client = XoClient(base_url=url, keyfile=keyfile)
+    client = IoTClient(base_url=url, keyfile=keyfile)
 
     if args.wait and args.wait > 0:
         response = client.delete(
@@ -517,20 +481,18 @@ def main(prog_name=os.path.basename(sys.argv[0]), args=None):
         do_create(args)
     elif args.command == 'list':
         do_list(args)
-    elif args.command == 'show':
-        do_show(args)
-    elif args.command == 'take':
-        do_take(args)
+    elif args.command == 'upload':
+        do_upload(args)
     elif args.command == 'delete':
         do_delete(args)
     else:
-        raise XoException("invalid command: {}".format(args.command))
+        raise IoTException("invalid command: {}".format(args.command))
 
 
 def main_wrapper():
     try:
         main()
-    except XoException as err:
+    except IoTException as err:
         print("Error: {}".format(err), file=sys.stderr)
         sys.exit(1)
     except KeyboardInterrupt:

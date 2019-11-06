@@ -18,7 +18,7 @@ import hashlib
 from sawtooth_sdk.processor.exceptions import InternalError
 
 
-IoT_NAMESPACE = hashlib.sha512('xo'.encode("utf-8")).hexdigest()[0:6]
+IoT_NAMESPACE = hashlib.sha512('IoT'.encode("utf-8")).hexdigest()[0:6]
 
 
 def _make_iot_address(name):
@@ -54,11 +54,17 @@ class IoT_State:
             data (Data): The information specifying the current data.
         """
 
+        print('2. Ready to enter _load_dataSet function.')
+
         dataSet = self._load_dataSet(data_name=data_name)
+
+        print('dataSet is', dataSet)
 
         dataSet[data_name] = data
 
         self._store_data(data_name, dataSet=dataSet)
+
+        print('4. State set_data np problem')
 
     def get_data(self, data_name):
         """Get the data associated with data_name.
@@ -68,7 +74,7 @@ class IoT_State:
             (Data): All the information specifying a data.
         """
 
-        return self._load_dataSet(data_name=data_name).get(data.name)
+        return self._load_dataSet(data_name=data_name).get(data_name)
 
     # Use the name in data to search the dataSet
     def _load_dataSet(self, data_name):
@@ -80,6 +86,19 @@ class IoT_State:
                 dataSet = self._deserialize(serialized_dataSet)
             else:
                 dataSet = {}
+        else:
+            state_entries = self._context.get_state(
+                [address],
+                timeout=self.TIMEOUT)
+            if state_entries:
+                self._address_cache[address] = state_entries[0].data
+                dataSet = self._deserialize(serialized_dataSet=state_entries[0].data)
+            else:
+                self._address_cache[address] = None
+                dataSet = {}
+
+        print('3. State _load_dataSet no problem.')
+        return dataSet
     
     def _store_data(self, data_name, dataSet):
         address = _make_iot_address(data_name)
@@ -123,7 +142,7 @@ class IoT_State:
         data_strs = []
         for name, g in dataSet.items():
             data_str = ','.join(
-                [name, temperature, humidity])
+                [name, str(g.temperature), str(g.humidity)])
             data_strs.append(data_str)
         
         return '|'.join(sorted(data_strs)).encode()

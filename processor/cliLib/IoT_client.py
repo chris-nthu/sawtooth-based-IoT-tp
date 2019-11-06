@@ -32,7 +32,7 @@ from sawtooth_sdk.protobuf.batch_pb2 import BatchList
 from sawtooth_sdk.protobuf.batch_pb2 import BatchHeader
 from sawtooth_sdk.protobuf.batch_pb2 import Batch
 
-from sawtooth_xo.xo_exceptions import XoException
+from cliLib.IoT_exceptions import IoTException
 
 
 def _sha512(data):
@@ -52,21 +52,21 @@ class IoTClient:
             with open(keyfile) as fd:
                 private_key_str = fd.read().strip()
         except OSError as err:
-            raise XoException(
+            raise IoTException(
                 'Failed to read private key {}: {}'.format(
                     keyfile, str(err)))
 
         try:
             private_key = Secp256k1PrivateKey.from_hex(private_key_str)
         except ParseError as e:
-            raise XoException(
+            raise IoTException(
                 'Unable to load private key: {}'.format(str(e)))
 
         self._signer = CryptoFactory(create_context('secp256k1')) \
             .new_signer(private_key)
 
     def create(self, name, wait=None, auth_user=None, auth_password=None):
-        return self._send_xo_txn(
+        return self._send_iot_txn(
             name,
             "create",
             wait=wait,
@@ -74,27 +74,28 @@ class IoTClient:
             auth_password=auth_password)
 
     def delete(self, name, wait=None, auth_user=None, auth_password=None):
-        return self._send_xo_txn(
+        return self._send_iot_txn(
             name,
             "delete",
             wait=wait,
             auth_user=auth_user,
             auth_password=auth_password)
 
-    def take(self, name, space, wait=None, auth_user=None, auth_password=None):
-        return self._send_xo_txn(
+    def upload(self, name, temperature, humidity, wait=None, auth_user=None, auth_password=None):
+        return self._send_iot_txn(
             name,
-            "take",
-            space,
+            "upload",
+            temperature,
+            humidity,
             wait=wait,
             auth_user=auth_user,
             auth_password=auth_password)
 
     def list(self, auth_user=None, auth_password=None):
-        xo_prefix = self._get_prefix()
+        iot_prefix = self._get_prefix()
 
         result = self._send_request(
-            "state?address={}".format(xo_prefix),
+            "state?address={}".format(iot_prefix),
             auth_user=auth_user,
             auth_password=auth_password)
 
@@ -130,15 +131,15 @@ class IoTClient:
                 auth_password=auth_password)
             return yaml.safe_load(result)['data'][0]['status']
         except BaseException as err:
-            raise XoException(err)
+            raise IoTException(err)
 
     def _get_prefix(self):
-        return _sha512('xo'.encode('utf-8'))[0:6]
+        return _sha512('IoT'.encode('utf-8'))[0:6]
 
     def _get_address(self, name):
-        xo_prefix = self._get_prefix()
-        game_address = _sha512(name.encode('utf-8'))[0:64]
-        return xo_prefix + game_address
+        iot_prefix = self._get_prefix()
+        data_address = _sha512(name.encode('utf-8'))[0:64]
+        return iot_prefix + data_address
 
     def _send_request(self,
                       suffix,
@@ -169,37 +170,38 @@ class IoTClient:
                 result = requests.get(url, headers=headers)
 
             if result.status_code == 404:
-                raise XoException("No such game: {}".format(name))
+                raise IoTException("No such data: {}".format(name))
 
             if not result.ok:
-                raise XoException("Error {}: {}".format(
+                raise IoTException("Error {}: {}".format(
                     result.status_code, result.reason))
 
         except requests.ConnectionError as err:
-            raise XoException(
+            raise IoTException(
                 'Failed to connect to {}: {}'.format(url, str(err)))
 
         except BaseException as err:
-            raise XoException(err)
+            raise IoTException(err)
 
         return result.text
 
-    def _send_xo_txn(self,
+    def _send_iot_txn(self,
                      name,
                      action,
-                     space="",
+                     temperature="",
+                     humidity="",
                      wait=None,
                      auth_user=None,
                      auth_password=None):
         # Serialization is just a delimited utf-8 encoded string
-        payload = ",".join([name, action, str(space)]).encode()
+        payload = ",".join([name, action, str(temperature), str(humidity)]).encode()
 
         # Construct the address
         address = self._get_address(name)
 
         header = TransactionHeader(
             signer_public_key=self._signer.get_public_key().as_hex(),
-            family_name="xo",
+            family_name="IoT",
             family_version="1.0",
             inputs=[address],
             outputs=[address],
