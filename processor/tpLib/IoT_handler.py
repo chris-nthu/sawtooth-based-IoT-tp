@@ -55,6 +55,7 @@ class IoT_TransactionHandler(TransactionHandler):
 
         if iot_payload.action == 'create':
 
+            
             # Create a "data" structure and put "name" in it
             data = Data(name=iot_payload.name,
                         temperature='',

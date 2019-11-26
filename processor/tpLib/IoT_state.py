@@ -25,6 +25,15 @@ def _make_iot_address(name):
     return IoT_NAMESPACE + \
         hashlib.sha512(name.encode('utf-8')).hexdigest()[:64]
 
+'''
+class Data:
+    def __init__(self, name, temperature, humidity):
+        self.name = name
+        self.temperature = temperature
+        self.humidity = humidity
+        self.temperatureL = []
+        self.humidityL = []
+'''
 
 class Data:
     def __init__(self, name, temperature, humidity):
@@ -57,8 +66,6 @@ class IoT_State:
         print('2. Ready to enter _load_dataSet function.')
 
         dataSet = self._load_dataSet(data_name=data_name)
-
-        print('dataSet is', dataSet)
 
         dataSet[data_name] = data
 
@@ -140,9 +147,10 @@ class IoT_State:
         """
 
         data_strs = []
+        dataInfo_list = []
         for name, g in dataSet.items():
             data_str = ','.join(
                 [name, str(g.temperature), str(g.humidity)])
             data_strs.append(data_str)
-        
+
         return '|'.join(sorted(data_strs)).encode()
