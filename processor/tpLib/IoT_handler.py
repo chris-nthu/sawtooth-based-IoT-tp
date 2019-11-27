@@ -22,12 +22,15 @@ from sawtooth_sdk.processor.exceptions import InternalError
 
 from tpLib.IoT_payload import *
 from tpLib.IoT_state import *
+from tpLib.IoT_database import *
 
 
 LOGGER = logging.getLogger(__name__)
 
-
 class IoT_TransactionHandler(TransactionHandler):
+    def __init__(self):
+        self.count = 1
+
     # Disable invalid-overridden-method. The sawtooth-sdk expects these to be
     # properties.
     # pylint: disable=invalid-overridden-method
@@ -44,7 +47,7 @@ class IoT_TransactionHandler(TransactionHandler):
         return [IoT_NAMESPACE]
     
     def apply(self, transaction, context):
-        
+
         header = transaction.header
         signer = header.signer_public_key
 
@@ -54,17 +57,20 @@ class IoT_TransactionHandler(TransactionHandler):
         iot_state = IoT_State(context)
 
         if iot_payload.action == 'create':
-
             
             # Create a "data" structure and put "name" in it
             data = Data(name=iot_payload.name,
                         temperature='',
                         humidity='')
             
+            datainfo = IoT_Database(iot_payload.name, None, None)
+            datainfo.submit(self.count)
+            
             # Store data in sawtooth blockchain
             iot_state.set_data(iot_payload.name, data)
 
             print('1. Handler create no problem.')
+            self.count += 1
         
         elif iot_payload.action == 'upload':
             
@@ -75,8 +81,13 @@ class IoT_TransactionHandler(TransactionHandler):
             data.temperature = iot_payload.temperature
             data.humidity = iot_payload.humidity
 
+            datainfo = IoT_Database(iot_payload.name, iot_payload.temperature, iot_payload.humidity)
+            datainfo.submit(self.count)
+
             # Store data in sawtooth blockchain
             iot_state.set_data(iot_payload.name, data)
+
+            self.count += 1
 
         else:
             raise InvalidTransaction(
